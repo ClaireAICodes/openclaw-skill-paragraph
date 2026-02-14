@@ -138,7 +138,7 @@ await skills.paragraph.paragraph_createPost({
 ```
 
 **Parameter: `waitForProcessing`** (optional, default `true`):
-- When `true` (default): the tool will **poll** the post for up to **20 seconds** (every 1 second) until `slug` and `url` are populated. Returns the **full post object** with all fields (`slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc.). If timeout, returns partial data with `_warning`.
+- When `true` (default): the tool will **poll** the post for up to **~25 seconds** (1s then 2s intervals) with **5 second request timeout** and gentle backoff to be rate-limit friendly. Returns the **full post object** with all fields (`slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc.). If processing doesn't complete in time, returns partial data with `_warning`.
 - When `false`: returns immediately with `{ id, slug?, url?, publishedAt? }` – may have undefined fields. Use this for fire-and-forget if you plan to fetch later.
 
 **Example with auto-wait:**

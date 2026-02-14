@@ -196,10 +196,10 @@ export const tools = {
    * Create a new blog post
    *
    * Posts are published immediately onchain, but the slug and URL require a few seconds
-   * of processing to become available. By default, this tool will wait (up to 20 seconds)
+   * of processing to become available. By default, this tool will wait (up to ~25 seconds)
    * for processing to complete and return the full post data including slug and URL.
    *
-   * @param {boolean} waitForProcessing - If true (default), poll for up to 20s until slug/url are ready. Set false for fire-and-forget (returns immediately with possibly incomplete data).
+   * @param {boolean} waitForProcessing - If true (default), poll for up to ~25s (with per-request timeout and backoff) until slug/url are ready. Set false for fire-and-forget (returns immediately with possibly incomplete data).
    */
   paragraph_createPost: wrapTool(async ({
     title,
@@ -234,17 +234,24 @@ export const tools = {
 
     // If waitForProcessing is true (default), poll for the full post data
     if (waitForProcessing) {
-      const maxAttempts = 20 // 20 * 1s = 20 seconds max
+      const maxAttempts = 12 // ~25 seconds total with backoff
       for (let i = 0; i < maxAttempts; i++) {
         try {
-          const full = await request("GET", `/v1/posts/${postId}`)
+          // Add per-request timeout to avoid hanging (5s)
+          const timeoutMs = 5000
+          const full = await Promise.race([
+            request("GET", `/v1/posts/${postId}`),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), timeoutMs))
+          ])
           if (full.slug && full.url) {
             return full // Return complete post object
           }
         } catch (e) {
-          // Ignore, continue polling
+          // Ignore errors (network, timeout, rate limit) and continue polling
         }
-        await new Promise(r => setTimeout(r, 1000))
+        // Gentle backoff: 1s then 2s intervals to be rate-limit friendly
+        const delay = i === 0 ? 1000 : 2000
+        await new Promise(r => setTimeout(r, delay))
       }
       // Timeout – return the initial result with a note
       return {
@@ -252,7 +259,7 @@ export const tools = {
         slug: createResult.slug || null,
         url: createResult.url || null,
         publishedAt: createResult.publishedAt || null,
-        _warning: "Onchain processing not complete within 20s. Call paragraph_getPost later to retrieve full data."
+        _warning: "Onchain processing not complete within ~25s. Call paragraph_getPost later to retrieve full data."
       }
     }
 

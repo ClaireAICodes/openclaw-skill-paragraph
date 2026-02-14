@@ -84,14 +84,14 @@ examples:
     call: paragraph_testConnection
   - description: Get current publication (auto-discovers ID and slug)
     call: paragraph_getMyPublication
-  - description: Create a blog post
+  - description: Create a blog post (waits for onchain processing by default)
     call: paragraph_createPost
     params:
       title: "My Web3 Blog Post"
       markdown: "# Hello\n\nThis is my first post on Paragraph."
       sendNewsletter: false
       categories: ["web3", "blockchain"]
-      imageUrl: "https://example.com/cover.jpg"
+      # waitForProcessing defaults to true – will return full post with slug/url
   - description: List recent posts in publication (auto-discovers ID)
     call: paragraph_listPosts
     params:

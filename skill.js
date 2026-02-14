@@ -27,7 +27,8 @@ let DEFAULT_PUBLICATION_SLUG = null
  * @param {string} endpoint - API endpoint (without base, e.g., "/v1/posts")
  * @param {Object} body - Request body (will be JSON stringified)
  * @param {Object} params - Query parameters
- * @param {Object} options - Additional options (formData, rawBody)
+ * @param {Object} options - Additional options (formData, rawBody, timeout)
+ * @param {number} [options.timeout=10000] - Request timeout in milliseconds (default 10s)
  * @returns {Promise<any>}
  */
 async function request(method, endpoint, body = null, params = {}, options = {}) {
@@ -60,30 +61,40 @@ async function request(method, endpoint, body = null, params = {}, options = {})
     // Don't set Content-Type; fetch will set boundary
   }
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    body: fetchBody
-  })
+  // Set up abort controller for timeout
+  const controller = new AbortController()
+  const timeoutMs = options.timeout || 10000 // default 10 seconds
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-  if (!response.ok) {
-    let errorMsg = `HTTP ${response.status} ${response.statusText}`
-    try {
-      const errorData = await response.json()
-      errorMsg = errorData.msg || errorData.message || errorData.error || errorMsg
-    } catch (e) {}
-    throw new Error(errorMsg)
-  }
+  try {
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: fetchBody,
+      signal: controller.signal
+    })
 
-  if (response.status === 204 || response.headers.get("content-length") === "0") {
-    return { success: true }
-  }
+    if (!response.ok) {
+      let errorMsg = `HTTP ${response.status} ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        errorMsg = errorData.msg || errorData.message || errorData.error || errorMsg
+      } catch (e) {}
+      throw new Error(errorMsg)
+    }
 
-  const contentType = response.headers.get("content-type") || ""
-  if (contentType.includes("application/json")) {
-    return await response.json()
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return { success: true }
+    }
+
+    const contentType = response.headers.get("content-type") || ""
+    if (contentType.includes("application/json")) {
+      return await response.json()
+    }
+    return await response.text()
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return await response.text()
 }
 
 /**
@@ -242,12 +253,8 @@ export const tools = {
       const maxAttempts = 12 // ~25 seconds total with backoff
       for (let i = 0; i < maxAttempts; i++) {
         try {
-          // Add per-request timeout to avoid hanging (5s)
-          const timeoutMs = 5000
-          const full = await Promise.race([
-            request("GET", `/v1/posts/${postId}`),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), timeoutMs))
-          ])
+          // Use request with built-in timeout (3s per attempt)
+          const full = await request("GET", `/v1/posts/${postId}`, null, {}, { timeout: 3000 })
           if (full.slug && full.url) {
             return full // Return complete post object
           }

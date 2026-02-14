@@ -118,42 +118,41 @@ export const tools = {
 
   /**
    * Create a new post
+   * Note: Posts are always published immediately (no draft mode). To "update", you would need to create a new post.
    */
   paragraph_createPost: wrapTool(async ({
     title,
     markdown,
-    published = false,
-    tags = [],
-    coverImage,
-    series,
-    canonicalUrl,
+    subtitle,
+    imageUrl,
     sendNewsletter = false,
-    publicationId
+    slug,
+    postPreview,
+    categories
   }) => {
     if (!title || !markdown) {
       throw new Error("Missing required parameters: title, markdown")
     }
 
-    const article = {
+    // Build request body directly (no wrapper)
+    const body = {
       title,
-      body_markdown: markdown,
-      published,
-      tags,
+      markdown,
       sendNewsletter
     }
 
-    if (coverImage) article.coverImage = coverImage
-    if (series) article.series = series
-    if (canonicalUrl) article.canonical_url = canonicalUrl
+    if (subtitle) body.subtitle = subtitle
+    if (imageUrl) body.imageUrl = imageUrl
+    if (slug) body.slug = slug
+    if (postPreview) body.postPreview = postPreview
+    if (categories) body.categories = categories // array or comma-separated string
 
-    // If publicationId is provided, use it; otherwise rely on API key scoping
-    const endpoint = publicationId ? `/publications/${publicationId}/posts` : "/v1/posts"
-    const result = await request("POST", endpoint, { article })
+    const result = await request("POST", "/v1/posts", body)
     return {
       id: result.id,
       slug: result.slug,
       url: result.url,
-      published: result.published
+      publishedAt: result.publishedAt
     }
   }),
 
@@ -181,54 +180,22 @@ export const tools = {
   }),
 
   /**
-   * Update an existing post
-   */
-  paragraph_updatePost: wrapTool(async ({
-    postId,
-    title,
-    markdown,
-    published,
-    tags,
-    coverImage,
-    series,
-    canonicalUrl
-  }) => {
-    if (!postId) throw new Error("postId is required")
-
-    const updates = {}
-    if (title !== undefined) updates.title = title
-    if (markdown !== undefined) updates.body_markdown = markdown
-    if (published !== undefined) updates.published = published
-    if (tags !== undefined) updates.tags = tags
-    if (coverImage !== undefined) updates.coverImage = coverImage
-    if (series !== undefined) updates.series = series
-    if (canonicalUrl !== undefined) updates.canonical_url = canonicalUrl
-
-    if (Object.keys(updates).length === 0) {
-      throw new Error("No update fields provided")
-    }
-
-    const result = await request("PUT", `/v1/posts/${postId}`, { article: updates })
-    return result
-  }),
-
-  /**
    * List posts in a publication
    */
   paragraph_listPosts: wrapTool(async ({
     publicationId,
-    limit = 20,
+    limit = 10,
     cursor,
-    status
+    includeContent = false
   }) => {
     const pubId = publicationId || DEFAULT_PUBLICATION_ID
     if (!pubId) throw new Error("publicationId required or set DEFAULT_PUBLICATION_ID")
 
     const params = { limit }
     if (cursor) params.cursor = cursor
-    if (status) params.status = status
+    if (includeContent) params.includeContent = "true"
 
-    const result = await request("GET", `/publications/${pubId}/posts`, null, params)
+    const result = await request("GET", `/v1/publications/${pubId}/posts`, null, params)
     return {
       posts: result.items || [],
       pagination: result.pagination || {}

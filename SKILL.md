@@ -29,7 +29,6 @@ tools:
   - paragraph_createPost
   - paragraph_getPost
   - paragraph_getPostBySlug
-  - paragraph_updatePost
   - paragraph_listPosts
   - paragraph_getPublication
   - paragraph_getPublicationByDomain
@@ -79,14 +78,16 @@ examples:
     params:
       title: "My Web3 Blog Post"
       markdown: "# Hello\n\nThis is my first post on Paragraph."
-      published: true
-      tags: ["web3", "blockchain"]
-  - description: List recent posts
+      sendNewsletter: false
+      categories: ["web3", "blockchain"]
+      imageUrl: "https://example.com/cover.jpg"
+  - description: List recent posts in publication
     call: paragraph_listPosts
     params:
+      publicationId: "pub_123"
       limit: 10
-      status: "published"
-  - description: Tokenize a post as a coin
+      includeContent: false
+  - description: Get token data for a coined post
     call: paragraph_getCoin
     params:
       coinId: "coin_123"
@@ -97,5 +98,7 @@ notes:
   - All tools return standardized { success, data, error } format.
   - Rate limiting: Implement retry/backoff in agent if needed.
   - CSV import expects text/csv raw bytes (see README for format).
+  - Post updates (PUT) are not supported by the Paragraph API at this time.
+  - Posts are published onchain immediately upon creation; slug and URL may be undefined until onchain processing completes.
 
 ---

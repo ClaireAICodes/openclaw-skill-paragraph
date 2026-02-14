@@ -4,13 +4,15 @@ OpenClaw skill for interacting with [Paragraph.com](https://paragraph.com) - a W
 
 ## Features
 
-- **Posts**: Create, read, update, list posts with markdown support
+- **Posts**: Create, read, list posts with markdown support
 - **Publications**: Get publication details by slug or custom domain
 - **Subscribers**: Add, list, import subscribers (email or wallet), get count
 - **Coins**: Tokenized posts, retrieve coin data, check holders, trending coins
 - **Users**: Look up user profiles by ID or wallet address
 - **Feed**: Get curated posts and posts by tag
 - **Web3 Integration**: Native support for wallet addresses, tokens, onchain events
+
+**Note**: Updating posts via API is not currently supported by Paragraph.
 
 ## Implementation
 
@@ -73,20 +75,21 @@ await skills.paragraph.paragraph_testConnection({})
 ### Posts
 
 #### `paragraph_createPost`
-Create a new blog post (draft or published).
+Create a new blog post. **Posts are always published immediately** onchain - there is no draft mode.
+
 ```javascript
 await skills.paragraph.paragraph_createPost({
-  title: "My Web3 Journey",           // required
+  title: "My Web3 Journey",           // required, max 200 chars
   markdown: "# Introduction\n\nContent...", // required
-  published: true,                    // default: false
-  tags: ["web3", "blockchain"],       // optional array
-  coverImage: "https://example.com/cover.jpg",  // optional URL
-  series: "Web3 Basics",              // optional series name
-  canonicalUrl: "https://myblog.com/web3-journey", // optional for SEO
-  sendNewsletter: false,              // default: false
-  publicationId: "optional-override"  // uses default if not provided
+  subtitle: "A brief summary",        // optional, max 300 chars
+  imageUrl: "https://example.com/cover.jpg",  // optional cover image URL
+  sendNewsletter: false,              // optional, default false - email subscribers?
+  slug: "my-web3-journey",            // optional URL slug (1-256 chars)
+  postPreview: "Preview text...",     // optional, max 500 chars
+  categories: ["web3", "blockchain"]  // optional array of category tags
 })
-// Returns: { id, slug, url, published }
+// Returns: { id, slug?, url?, publishedAt? }
+// NOTE: slug and url may be undefined immediately after creation due to onchain processing.
 ```
 
 #### `paragraph_getPost`
@@ -104,50 +107,38 @@ await skills.paragraph.paragraph_getPostBySlug({
 })
 ```
 
-#### `paragraph_updatePost`
-Update an existing post. Only provided fields are changed.
-```javascript
-await skills.paragraph.paragraph_updatePost({
-  postId: "post_123",  // required
-  title: "Updated Title",
-  markdown: "# New content...",
-  published: true,
-  tags: ["updated", "tags"],
-  coverImage: "https://new-image.jpg",
-  series: "Updated Series",
-  canonicalUrl: "https://new-canonical.com"
-})
-```
-
 #### `paragraph_listPosts`
 List posts in a publication with cursor-based pagination.
 ```javascript
 await skills.paragraph.paragraph_listPosts({
   publicationId: "pub_123",   // optional if DEFAULT_PUBLICATION_ID set
-  limit: 20,                  // default 20, max likely 100
+  limit: 10,                  // default 10, max 100
   cursor: "next_cursor",      // optional, for pagination
-  status: "published"         // optional: "published" or "draft"
+  includeContent: false       // optional - include full content (markdown, json, staticHtml)? default false
 })
-// Returns: { posts: [], pagination: { cursor, hasMore, total } }
+// Returns: { posts: [{ id, title, slug, ... }], pagination: { cursor, hasMore, total } }
 ```
 
 #### `paragraph_getFeed`
-Get curated feed of posts (public, no auth required but works with API key).
+Get curated feed of posts (public endpoint, works with API key).
 ```javascript
 await skills.paragraph.paragraph_getFeed({
-  limit: 20,
+  limit: 20,   // default 20, max 60
   cursor: "optional_cursor"
 })
+// Returns: { posts: [], pagination: {} }
 ```
 
 #### `paragraph_getPostsByTag`
-Get posts with a specific tag.
+Get posts with a specific tag, sorted by publish date (newest first).
 ```javascript
 await skills.paragraph.paragraph_getPostsByTag({
   tag: "web3",    // required
-  limit: 20,
-  cursor: "optional"
+  limit: 20,      // default 10, max 100
+  cursor: "optional_cursor",
+  includeContent: false  // optional - include full content (markdown, json, staticHtml)?
 })
+// Returns: { posts: [], pagination: {} }
 ```
 
 ---

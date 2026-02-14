@@ -194,7 +194,10 @@ export const tools = {
 
   /**
    * Create a new post
-   * Note: Posts are always published immediately (no draft mode). To "update", you would need to create a new post.
+   * Note: Posts are always published immediately onchain, but the slug and URL may be
+   * undefined until onchain processing completes (usually a few seconds).
+   *
+   * @param {boolean} waitForProcessing - If true, wait up to 30s for onchain processing and return full post data (including slug, url, publishedAt). Default: false.
    */
   paragraph_createPost: wrapTool(async ({
     title,
@@ -204,7 +207,8 @@ export const tools = {
     sendNewsletter = false,
     slug,
     postPreview,
-    categories
+    categories,
+    waitForProcessing = false
   }) => {
     if (!title || !markdown) {
       throw new Error("Missing required parameters: title, markdown")
@@ -223,12 +227,39 @@ export const tools = {
     if (postPreview) body.postPreview = postPreview
     if (categories) body.categories = categories // array or comma-separated string
 
-    const result = await request("POST", "/v1/posts", body)
+    const createResult = await request("POST", "/v1/posts", body)
+    const postId = createResult.id
+
+    // If waitForProcessing is true, poll for the full post data
+    if (waitForProcessing) {
+      const maxAttempts = 15 // 15 * 2s = 30 seconds max
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          const full = await request("GET", `/v1/posts/${postId}`)
+          if (full.slug && full.url) {
+            return full // Return complete post object
+          }
+        } catch (e) {
+          // Ignore, continue polling
+        }
+        await new Promise(r => setTimeout(r, 2000))
+      }
+      // Timeout – return the initial result with a note
+      return {
+        ...createResult,
+        slug: createResult.slug || null,
+        url: createResult.url || null,
+        publishedAt: createResult.publishedAt || null,
+        _warning: "Onchain processing not complete within 30s. Call paragraph_getPost later to retrieve full data."
+      }
+    }
+
+    // Default: return immediate result (slug/url may be undefined)
     return {
-      id: result.id,
-      slug: result.slug,
-      url: result.url,
-      publishedAt: result.publishedAt
+      id: createResult.id,
+      slug: createResult.slug,
+      url: createResult.url,
+      publishedAt: createResult.publishedAt
     }
   }),
 
@@ -266,6 +297,8 @@ export const tools = {
   }) => {
     const pubId = publicationId || await discoverPublicationId()
     if (!pubId) throw new Error("publicationId required or PARAGRAPH_PUBLICATION_ID must be set, or feed must have posts to auto-discover")
+
+    console.log("DEBUG: listPosts using publicationId:", pubId) // temporary debug
 
     const params = { limit }
     if (cursor) params.cursor = cursor

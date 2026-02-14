@@ -232,8 +232,13 @@ export const tools = {
     const createResult = await request("POST", "/v1/posts", body)
     const postId = createResult.id
 
-    // If waitForProcessing is true (default), poll for the full post data
+    // If waitForProcessing is true (default) and the immediate response lacks slug/url, poll for the full post data
     if (waitForProcessing) {
+      // Quick check: maybe creation response already has slug/url (sometimes it does)
+      if (createResult.slug && createResult.url) {
+        return createResult
+      }
+
       const maxAttempts = 12 // ~25 seconds total with backoff
       for (let i = 0; i < maxAttempts; i++) {
         try {

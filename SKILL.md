@@ -32,6 +32,7 @@ tools:
   - paragraph_listPosts
   - paragraph_getPublication
   - paragraph_getPublicationByDomain
+  - paragraph_getMyPublication
   - paragraph_addSubscriber
   - paragraph_listSubscribers
   - paragraph_importSubscribers
@@ -81,6 +82,8 @@ setup:
 examples:
   - description: Test Paragraph connection
     call: paragraph_testConnection
+  - description: Get current publication (auto-discovers ID and slug)
+    call: paragraph_getMyPublication
   - description: Create a blog post
     call: paragraph_createPost
     params:
@@ -89,10 +92,9 @@ examples:
       sendNewsletter: false
       categories: ["web3", "blockchain"]
       imageUrl: "https://example.com/cover.jpg"
-  - description: List recent posts in publication
+  - description: List recent posts in publication (auto-discovers ID)
     call: paragraph_listPosts
     params:
-      publicationId: "pub_123"
       limit: 10
       includeContent: false
   - description: Get token data for a coined post

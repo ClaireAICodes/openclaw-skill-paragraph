@@ -206,6 +206,13 @@ await skills.paragraph.paragraph_getPublicationByDomain({
 })
 ```
 
+#### `paragraph_getMyPublication`
+Get the publication associated with the current API key. This is useful when you need to retrieve the publication's slug or ID programmatically without manually configuring `PARAGRAPH_PUBLICATION_ID`. Auto-discovers and caches the publication details.
+```javascript
+await skills.paragraph.paragraph_getMyPublication({})
+// Returns: { id, name, slug, customDomain?, ... }
+```
+
 ---
 
 ### Subscribers

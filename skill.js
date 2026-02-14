@@ -10,6 +10,8 @@ const API_BASE = process.env.PARAGRAPH_API_BASE_URL || "https://public.api.parag
 const API_KEY = process.env.PARAGRAPH_API_KEY
 // DEFAULT_PUBLICATION_ID can be set manually, but will auto-discover from API if not provided
 let DEFAULT_PUBLICATION_ID = process.env.PARAGRAPH_PUBLICATION_ID || null
+// Publication slug (for URL building) - auto-discovered alongside ID
+let DEFAULT_PUBLICATION_SLUG = null
 
 /**
  * Standardized response format
@@ -85,8 +87,9 @@ async function request(method, endpoint, body = null, params = {}, options = {})
 }
 
 /**
- * Auto-discover publication ID from the API key by fetching the feed
- * Caches the result in DEFAULT_PUBLICATION_ID for subsequent calls
+ * Auto-discover publication ID and slug from the API key by fetching the feed
+ * Caches the results in DEFAULT_PUBLICATION_ID and DEFAULT_PUBLICATION_SLUG
+ * Returns the publication ID
  */
 async function discoverPublicationId() {
   if (DEFAULT_PUBLICATION_ID) {
@@ -100,6 +103,12 @@ async function discoverPublicationId() {
       const pub = result.items[0].publication
       if (pub && pub.id) {
         DEFAULT_PUBLICATION_ID = String(pub.id)
+        // Also cache the slug if available
+        if (pub.slug) {
+          DEFAULT_PUBLICATION_SLUG = pub.slug
+        } else if (pub.customDomain) {
+          DEFAULT_PUBLICATION_SLUG = pub.customDomain
+        }
         return DEFAULT_PUBLICATION_ID
       }
     }
@@ -108,6 +117,36 @@ async function discoverPublicationId() {
   }
 
   throw new Error("Could not auto-discover publication ID. Either set PARAGRAPH_PUBLICATION_ID env var, or ensure your publication has at least one post to read from the feed.")
+}
+
+/**
+ * Get the publication slug (for URL building)
+ * Tries to auto-discover if not already cached
+ */
+async function getPublicationSlug() {
+  if (DEFAULT_PUBLICATION_SLUG) {
+    return DEFAULT_PUBLICATION_SLUG
+  }
+
+  // Ensure we have the ID first
+  const id = await discoverPublicationId()
+
+  try {
+    // Fetch publication details to get the slug
+    const pub = await request("GET", `/v1/publications/${id}`)
+    if (pub.slug) {
+      DEFAULT_PUBLICATION_SLUG = pub.slug
+      return DEFAULT_PUBLICATION_SLUG
+    }
+    if (pub.customDomain) {
+      DEFAULT_PUBLICATION_SLUG = pub.customDomain
+      return DEFAULT_PUBLICATION_SLUG
+    }
+  } catch (e) {
+    // Fall through
+  }
+
+  throw new Error("Could not determine publication slug. Set PARAGRAPH_PUBLICATION_ID and ensure the publication exists.")
 }
 
 /**
@@ -243,6 +282,19 @@ export const tools = {
   paragraph_getPublicationByDomain: wrapTool(async ({ domain }) => {
     if (!domain) throw new Error("domain is required")
     const result = await request("GET", `/publications/domain/${encodeURIComponent(domain)}`)
+    return result
+  }),
+
+  /**
+   * Get the current publication associated with the API key
+   * This auto-discovers the publication (by ID or slug) and returns full details
+   */
+  paragraph_getMyPublication: wrapTool(async () => {
+    const id = await discoverPublicationId()
+    const result = await request("GET", `/v1/publications/${id}`)
+    // Cache the slug for later URL building
+    if (result.slug) DEFAULT_PUBLICATION_SLUG = result.slug
+    if (result.customDomain) DEFAULT_PUBLICATION_SLUG = result.customDomain
     return result
   }),
 

@@ -63,7 +63,7 @@ async function request(method, endpoint, body = null, params = {}, options = {})
 
   // Set up abort controller for timeout
   const controller = new AbortController()
-  const timeoutMs = options.timeout || 10000 // default 10 seconds
+  const timeoutMs = options.timeout || 30000 // default 30 seconds (POSTs can be slow)
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {

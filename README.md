@@ -1,6 +1,12 @@
 # Paragraph OpenClaw Skill
 
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-ff6b6b)](https://github.com/openclaw/openclaw)
+[![Paragraph API](https://img.shields.io/badge/Paragraph-API-00c3ff)](https://paragraph.com/docs/api-reference)
+[![Node.js 19+](https://img.shields.io/badge/Node.js-19%2B-green)](https://nodejs.org)
+
 OpenClaw skill for interacting with [Paragraph.com](https://paragraph.com) - a Web3-native blogging platform with built-in tokenization, onchain storage, and community features.
+
 
 ## Features
 
@@ -34,6 +40,8 @@ The skill is installed in OpenClaw's global skills directory:
 
 No dependencies to install - uses built-in `fetch`.
 
+**Note**: This skill requires Node.js 19+ (OpenClaw runs Node 24+). It has **zero external dependencies**, making it lightweight and reliable.
+
 ## Configuration
 
 Set these environment variables (in OpenClaw config or shell):
@@ -60,6 +68,42 @@ All tools return a standardized response:
   error: string | null  // error message on failure
 }
 ```
+
+---
+
+## Development & Testing
+
+The skill includes a built-in test suite. Run it from the skill directory:
+
+```bash
+cd ~/.nvm/versions/node/v24.13.0/lib/node_modules/openclaw/skills/paragraph
+PARAGRAPH_API_KEY="your_key" node test.js
+```
+
+### Manual Testing
+
+You can also test individual tools by creating a test script:
+
+```javascript
+import tools from "./skill.js"
+
+// Test connection
+const conn = await tools.paragraph_testConnection({})
+console.log(conn)
+
+// Create a post
+const post = await tools.paragraph_createPost({
+  title: "Test",
+  markdown: "# Hello"
+})
+console.log(post)
+```
+
+### Auto-Discovery
+
+The skill automatically discovers your `PARAGRAPH_PUBLICATION_ID` from the API key by fetching the public feed. This means you **do not** need to manually set the environment variable unless your publication has no posts yet.
+
+To override auto-discovery, set `PARAGRAPH_PUBLICATION_ID` explicitly.
 
 ---
 
@@ -433,6 +477,23 @@ ISC
 
 ---
 
-**Last Updated**: 2026-02-14  
-**Version**: 1.1.0 (corrected endpoints, added feed/tag tools)  
+**Last Updated**: 2026-02-14
+**Version**: 1.2.0 (auto-discovery, fixed createPost fields, removed updatePost)
 **Status**: ✅ Production Ready - Verified with live API
+
+---
+
+## Changelog
+
+### v1.2.0 (2026-02-14)
+- **feat**: Auto-discover `PARAGRAPH_PUBLICATION_ID` from feed – no manual config needed
+- **fix**: Correct `paragraph_createPost` payload fields (`markdown`, `imageUrl`, `categories`)
+- **fix**: Remove non-existent `paragraph_updatePost` (endpoint doesn't exist in Paragraph API)
+- **fix**: Correct `paragraph_listPosts` endpoint to `/v1/publications/{id}/posts`
+- **docs**: Update examples to reflect actual API behavior (no draft mode, onchain processing)
+- **docs**: Clarify that `slug` and `url` may be undefined immediately after post creation
+
+### v1.1.0 (2026-02-13)
+- Initial implementation with 19 tools
+- Zero-dependency native fetch
+- Full test coverage

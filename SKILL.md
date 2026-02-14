@@ -56,6 +56,14 @@ tags:
   - tokens
   - publishing
   - content
+  - openclaw
+  - openclaw-skill
+  - paragraph
+  - decentralized
+  - onchain
+  - social
+  - creator-economy
+  - content-automation
 
 # Documentation
 documentation: README.md

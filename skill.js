@@ -101,15 +101,26 @@ async function discoverPublicationId() {
     const result = await request("GET", "/v1/posts/feed", null, { limit: 1 })
     if (result.items && result.items.length > 0) {
       const pub = result.items[0].publication
-      if (pub && pub.id) {
-        DEFAULT_PUBLICATION_ID = String(pub.id)
-        // Also cache the slug if available
+      if (pub) {
+        // Prefer slug from the feed - it's the stable identifier
         if (pub.slug) {
           DEFAULT_PUBLICATION_SLUG = pub.slug
         } else if (pub.customDomain) {
           DEFAULT_PUBLICATION_SLUG = pub.customDomain
         }
-        return DEFAULT_PUBLICATION_ID
+
+        // Now fetch the full publication using the slug to get the canonical ID
+        if (DEFAULT_PUBLICATION_SLUG) {
+          const fullPub = await request("GET", `/v1/publications/slug/${encodeURIComponent(DEFAULT_PUBLICATION_SLUG)}`)
+          if (fullPub && fullPub.id) {
+            DEFAULT_PUBLICATION_ID = String(fullPub.id)
+            // Ensure slug is cached
+            if (!DEFAULT_PUBLICATION_SLUG && fullPub.slug) {
+              DEFAULT_PUBLICATION_SLUG = fullPub.slug
+            }
+            return DEFAULT_PUBLICATION_ID
+          }
+        }
       }
     }
   } catch (e) {
@@ -287,12 +298,14 @@ export const tools = {
 
   /**
    * Get the current publication associated with the API key
-   * This auto-discovers the publication (by ID or slug) and returns full details
+   * This auto-discovers the publication (via feed -> slug -> ID) and returns full details
    */
   paragraph_getMyPublication: wrapTool(async () => {
+    // This will populate DEFAULT_PUBLICATION_ID and DEFAULT_PUBLICATION_SLUG
     const id = await discoverPublicationId()
+    // Now fetch full publication details by the canonical ID
     const result = await request("GET", `/v1/publications/${id}`)
-    // Cache the slug for later URL building
+    // Also ensure slug is cached for URL building
     if (result.slug) DEFAULT_PUBLICATION_SLUG = result.slug
     if (result.customDomain) DEFAULT_PUBLICATION_SLUG = result.customDomain
     return result

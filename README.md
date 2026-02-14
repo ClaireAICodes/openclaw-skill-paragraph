@@ -43,9 +43,11 @@ Set these environment variables (in OpenClaw config or shell):
 export PARAGRAPH_API_KEY="your_api_key_here"
 
 # Optional
-export PARAGRAPH_PUBLICATION_ID="your_default_publication_id"  # for tools that need a publication
+export PARAGRAPH_PUBLICATION_ID="your_publication_id"  # not needed - auto-discovered from API key
 export PARAGRAPH_API_BASE_URL="https://public.api.paragraph.com/api"  # internal, don't change
 ```
+
+**Note**: The `PARAGRAPH_PUBLICATION_ID` is optional. If not provided, the skill will automatically discover your publication ID by fetching the public feed (requires at least one published post). If your publication has no posts yet, you'll need to set this manually.
 
 ## API Reference
 

@@ -8,8 +8,8 @@
 // Configuration
 const API_BASE = process.env.PARAGRAPH_API_BASE_URL || "https://public.api.paragraph.com/api"
 const API_KEY = process.env.PARAGRAPH_API_KEY
-// DEFAULT_PUBLICATION_ID is rarely needed - API key usually scopes to a publication
-const DEFAULT_PUBLICATION_ID = process.env.PARAGRAPH_PUBLICATION_ID || null
+// DEFAULT_PUBLICATION_ID can be set manually, but will auto-discover from API if not provided
+let DEFAULT_PUBLICATION_ID = process.env.PARAGRAPH_PUBLICATION_ID || null
 
 /**
  * Standardized response format
@@ -82,6 +82,32 @@ async function request(method, endpoint, body = null, params = {}, options = {})
     return await response.json()
   }
   return await response.text()
+}
+
+/**
+ * Auto-discover publication ID from the API key by fetching the feed
+ * Caches the result in DEFAULT_PUBLICATION_ID for subsequent calls
+ */
+async function discoverPublicationId() {
+  if (DEFAULT_PUBLICATION_ID) {
+    return DEFAULT_PUBLICATION_ID
+  }
+
+  try {
+    // Fetch a small feed to get a post with publication info
+    const result = await request("GET", "/v1/posts/feed", null, { limit: 1 })
+    if (result.items && result.items.length > 0) {
+      const pub = result.items[0].publication
+      if (pub && pub.id) {
+        DEFAULT_PUBLICATION_ID = String(pub.id)
+        return DEFAULT_PUBLICATION_ID
+      }
+    }
+  } catch (e) {
+    // Silently fall through to error later
+  }
+
+  throw new Error("Could not auto-discover publication ID. Either set PARAGRAPH_PUBLICATION_ID env var, or ensure your publication has at least one post to read from the feed.")
 }
 
 /**
@@ -188,8 +214,8 @@ export const tools = {
     cursor,
     includeContent = false
   }) => {
-    const pubId = publicationId || DEFAULT_PUBLICATION_ID
-    if (!pubId) throw new Error("publicationId required or set DEFAULT_PUBLICATION_ID")
+    const pubId = publicationId || await discoverPublicationId()
+    if (!pubId) throw new Error("publicationId required or PARAGRAPH_PUBLICATION_ID must be set, or feed must have posts to auto-discover")
 
     const params = { limit }
     if (cursor) params.cursor = cursor

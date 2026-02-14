@@ -86,8 +86,8 @@ async function runTests() {
     try {
       console.log("\nTest: paragraph_testConnection with API key")
       const result = await tools.paragraph_testConnection({})
-      if (result.success && result.data.publications >= 0) {
-        console.log(`  ✅ Connected! Publications: ${result.data.publications}`)
+      if (result.success && typeof result.data.totalSubscribers === 'number') {
+        console.log(`  ✅ Connected! Total subscribers: ${result.data.totalSubscribers}`)
         passed++
       } else {
         console.log(`  ❌ Connection failed: ${result.error}`)

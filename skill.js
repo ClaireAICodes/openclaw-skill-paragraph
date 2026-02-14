@@ -193,11 +193,13 @@ export const tools = {
   }),
 
   /**
-   * Create a new post
-   * Note: Posts are always published immediately onchain, but the slug and URL may be
-   * undefined until onchain processing completes (usually a few seconds).
+   * Create a new blog post
    *
-   * @param {boolean} waitForProcessing - If true, wait up to 30s for onchain processing and return full post data (including slug, url, publishedAt). Default: false.
+   * Posts are published immediately onchain, but the slug and URL require a few seconds
+   * of processing to become available. By default, this tool will wait (up to 20 seconds)
+   * for processing to complete and return the full post data including slug and URL.
+   *
+   * @param {boolean} waitForProcessing - If true (default), poll for up to 20s until slug/url are ready. Set false for fire-and-forget (returns immediately with possibly incomplete data).
    */
   paragraph_createPost: wrapTool(async ({
     title,
@@ -208,7 +210,7 @@ export const tools = {
     slug,
     postPreview,
     categories,
-    waitForProcessing = false
+    waitForProcessing = true // DEFAULT TO TRUE – slug/url almost always needed
   }) => {
     if (!title || !markdown) {
       throw new Error("Missing required parameters: title, markdown")
@@ -230,9 +232,9 @@ export const tools = {
     const createResult = await request("POST", "/v1/posts", body)
     const postId = createResult.id
 
-    // If waitForProcessing is true, poll for the full post data
+    // If waitForProcessing is true (default), poll for the full post data
     if (waitForProcessing) {
-      const maxAttempts = 15 // 15 * 2s = 30 seconds max
+      const maxAttempts = 20 // 20 * 1s = 20 seconds max
       for (let i = 0; i < maxAttempts; i++) {
         try {
           const full = await request("GET", `/v1/posts/${postId}`)
@@ -242,7 +244,7 @@ export const tools = {
         } catch (e) {
           // Ignore, continue polling
         }
-        await new Promise(r => setTimeout(r, 2000))
+        await new Promise(r => setTimeout(r, 1000))
       }
       // Timeout – return the initial result with a note
       return {
@@ -250,11 +252,11 @@ export const tools = {
         slug: createResult.slug || null,
         url: createResult.url || null,
         publishedAt: createResult.publishedAt || null,
-        _warning: "Onchain processing not complete within 30s. Call paragraph_getPost later to retrieve full data."
+        _warning: "Onchain processing not complete within 20s. Call paragraph_getPost later to retrieve full data."
       }
     }
 
-    // Default: return immediate result (slug/url may be undefined)
+    // waitForProcessing = false: return immediate result (slug/url may be undefined)
     return {
       id: createResult.id,
       slug: createResult.slug,

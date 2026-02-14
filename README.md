@@ -137,9 +137,9 @@ await skills.paragraph.paragraph_createPost({
 })
 ```
 
-**Parameter: `waitForProcessing`** (optional, default `false`):
-- When `false` (default): returns immediately with `{ id, slug?, url?, publishedAt? }`. The `slug` and `url` may be `undefined` because Paragraph stores posts onchain and needs a few seconds to generate the final URL.
-- When `true`: the tool will **poll** the post for up to **30 seconds** (every 2 seconds) until `slug` and `url` are populated. Returns the **full post object** with all fields, including `slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc. If timeout occurs, returns the immediate result plus `_warning: "Onchain processing not complete..."`.
+**Parameter: `waitForProcessing`** (optional, default `true`):
+- When `true` (default): the tool will **poll** the post for up to **20 seconds** (every 1 second) until `slug` and `url` are populated. Returns the **full post object** with all fields (`slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc.). If timeout, returns partial data with `_warning`.
+- When `false`: returns immediately with `{ id, slug?, url?, publishedAt? }` – may have undefined fields. Use this for fire-and-forget if you plan to fetch later.
 
 **Example with auto-wait:**
 ```javascript

@@ -132,11 +132,26 @@ await skills.paragraph.paragraph_createPost({
   sendNewsletter: false,              // optional, default false - email subscribers?
   slug: "my-web3-journey",            // optional URL slug (1-256 chars)
   postPreview: "Preview text...",     // optional, max 500 chars
-  categories: ["web3", "blockchain"]  // optional array of category tags
+  categories: ["web3", "blockchain"], // optional array of category tags
+  waitForProcessing: false            // optional, default false - wait for onchain slug/url?
 })
-// Returns: { id, slug?, url?, publishedAt? }
-// NOTE: slug and url may be undefined immediately after creation due to onchain processing.
 ```
+
+**Parameter: `waitForProcessing`** (optional, default `false`):
+- When `false` (default): returns immediately with `{ id, slug?, url?, publishedAt? }`. The `slug` and `url` may be `undefined` because Paragraph stores posts onchain and needs a few seconds to generate the final URL.
+- When `true`: the tool will **poll** the post for up to **30 seconds** (every 2 seconds) until `slug` and `url` are populated. Returns the **full post object** with all fields, including `slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc. If timeout occurs, returns the immediate result plus `_warning: "Onchain processing not complete..."`.
+
+**Example with auto-wait:**
+```javascript
+const result = await skills.paragraph.paragraph_createPost({
+  title: "My Post",
+  markdown: "# Hello",
+  waitForProcessing: true
+})
+console.log("Final URL:", result.data.url) // guaranteed to be present if successful
+```
+
+**Note**: Without `waitForProcessing: true`, you'll need to call `paragraph_getPost({ postId })` later to retrieve the final slug and URL.
 
 #### `paragraph_getPost`
 Retrieve a post by its ID.

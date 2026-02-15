@@ -17,7 +17,10 @@ env:
     description: Paragraph API authentication key
     required: true
   - name: PARAGRAPH_PUBLICATION_ID
-    description: Default publication ID (optional)
+    description: Default publication ID (optional, auto-discovered if not set)
+    required: false
+  - name: PARAGRAPH_PUBLICATION_SLUG
+    description: Publication slug for URL building (optional, auto-discovered if not set). Example: "myblog" or "jonathancolton.eth"
     required: false
   - name: PARAGRAPH_API_BASE_URL
     description: Custom API base URL (for testing)
@@ -84,14 +87,14 @@ examples:
     call: paragraph_testConnection
   - description: Get current publication (auto-discovers ID and slug)
     call: paragraph_getMyPublication
-  - description: Create a blog post (waits for onchain processing by default)
+  - description: Create a blog post (fast response by default)
     call: paragraph_createPost
     params:
       title: "My Web3 Blog Post"
       markdown: "# Hello\n\nThis is my first post on Paragraph."
       sendNewsletter: false
       categories: ["web3", "blockchain"]
-      # waitForProcessing defaults to true – will return full post with slug/url
+      # waitForProcessing defaults to false – returns immediately; set true to wait for slug/url
   - description: List recent posts in publication (auto-discovers ID)
     call: paragraph_listPosts
     params:

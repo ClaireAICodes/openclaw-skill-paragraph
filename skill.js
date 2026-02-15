@@ -10,8 +10,8 @@ const API_BASE = process.env.PARAGRAPH_API_BASE_URL || "https://public.api.parag
 const API_KEY = process.env.PARAGRAPH_API_KEY
 // DEFAULT_PUBLICATION_ID can be set manually, but will auto-discover from API if not provided
 let DEFAULT_PUBLICATION_ID = process.env.PARAGRAPH_PUBLICATION_ID || null
-// Publication slug (for URL building) - auto-discovered alongside ID
-let DEFAULT_PUBLICATION_SLUG = null
+// Publication slug (for URL building) - can be set manually via env var or auto-discovered
+let DEFAULT_PUBLICATION_SLUG = process.env.PARAGRAPH_PUBLICATION_SLUG || null
 
 /**
  * Standardized response format
@@ -207,10 +207,10 @@ export const tools = {
    * Create a new blog post
    *
    * Posts are published immediately onchain, but the slug and URL require a few seconds
-   * of processing to become available. By default, this tool will wait (up to ~25 seconds)
-   * for processing to complete and return the full post data including slug and URL.
+   * of processing to become available. By default, this tool returns immediately without waiting.
+   * Set waitForProcessing to true to poll for up to ~25 seconds until slug/url are ready.
    *
-   * @param {boolean} waitForProcessing - If true (default), poll for up to ~25s (with per-request timeout and backoff) until slug/url are ready. Set false for fire-and-forget (returns immediately with possibly incomplete data).
+   * @param {boolean} waitForProcessing - If false (default), returns immediately with post ID. Set true to poll for full post data including slug and URL.
    */
   paragraph_createPost: wrapTool(async ({
     title,
@@ -221,7 +221,7 @@ export const tools = {
     slug,
     postPreview,
     categories,
-    waitForProcessing = true // DEFAULT TO TRUE – slug/url almost always needed
+    waitForProcessing = false // DEFAULT TO FALSE – fast response by default
   }) => {
     if (!title || !markdown) {
       throw new Error("Missing required parameters: title, markdown")

@@ -51,11 +51,12 @@ Set these environment variables (in OpenClaw config or shell):
 export PARAGRAPH_API_KEY="your_api_key_here"
 
 # Optional
-export PARAGRAPH_PUBLICATION_ID="your_publication_id"  # not needed - auto-discovered from API key
+export PARAGRAPH_PUBLICATION_ID="your_publication_id"  # auto-discovered if not set
+export PARAGRAPH_PUBLICATION_SLUG="your_publication_slug"  # auto-discovered if not set (e.g., "myblog" or "jonathancolton.eth")
 export PARAGRAPH_API_BASE_URL="https://public.api.paragraph.com/api"  # internal, don't change
 ```
 
-**Note**: The `PARAGRAPH_PUBLICATION_ID` is optional. If not provided, the skill will automatically discover your publication ID by fetching the public feed (requires at least one published post). If your publication has no posts yet, you'll need to set this manually.
+**Note**: Both `PARAGRAPH_PUBLICATION_ID` and `PARAGRAPH_PUBLICATION_SLUG` are optional. If not provided, the skill will automatically discover them by fetching the public feed (requires at least one published post). If your publication has no posts yet, you'll need to set one of these manually. The slug is used for constructing post URLs.
 
 ## API Reference
 
@@ -137,9 +138,9 @@ await skills.paragraph.paragraph_createPost({
 })
 ```
 
-**Parameter: `waitForProcessing`** (optional, default `true`):
-- When `true` (default): the tool will **poll** the post for up to **~25 seconds** (1s then 2s intervals) with **5 second request timeout** and gentle backoff to be rate-limit friendly. Returns the **full post object** with all fields (`slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc.). If processing doesn't complete in time, returns partial data with `_warning`.
-- When `false`: returns immediately with `{ id, slug?, url?, publishedAt? }` – may have undefined fields. Use this for fire-and-forget if you plan to fetch later.
+**Parameter: `waitForProcessing`** (optional, default `false`):
+- When `false` (default): returns immediately with `{ id, slug?, url?, publishedAt? }` – slug and URL may be undefined if onchain processing isn't complete yet. Use this for fast, fire-and-forget operations.
+- When `true`: the tool will **poll** the post for up to **~25 seconds** (1s then 2s intervals) with **5 second request timeout** and gentle backoff to be rate-limit friendly. Returns the **full post object** with all fields (`slug`, `url`, `publishedAt`, `categories`, `imageUrl`, etc.). If processing doesn't complete in time, returns partial data with `_warning`.
 
 **Example with auto-wait:**
 ```javascript
@@ -151,7 +152,25 @@ const result = await skills.paragraph.paragraph_createPost({
 console.log("Final URL:", result.data.url) // guaranteed to be present if successful
 ```
 
-**Note**: Without `waitForProcessing: true`, you'll need to call `paragraph_getPost({ postId })` later to retrieve the final slug and URL.
+**Note**: With `waitForProcessing: false` (default), you'll need to call `paragraph_getPost({ postId })` later to retrieve the final slug and URL, OR construct the URL manually using the publication slug:
+
+```javascript
+// After creating a post with waitForProcessing: false
+const post = await tools.paragraph_createPost({ title, markdown, waitForProcessing: false })
+const postId = post.data.id
+
+// Later, fetch the post to get the slug
+const fullPost = await tools.paragraph_getPost({ postId })
+const slug = fullPost.data.slug
+
+// Get the publication slug (from env or auto-discovered)
+const pub = await tools.paragraph_getMyPublication({})
+const pubSlug = pub.data.slug || pub.data.customDomain
+
+// Construct the full URL
+const url = `https://paragraph.com/@${pubSlug}/${slug}`
+// Example: https://paragraph.com/@jonathancolton.eth/openclaw-ideas-research-report-1
+```
 
 #### `paragraph_getPost`
 Retrieve a post by its ID.

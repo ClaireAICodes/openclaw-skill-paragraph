@@ -16,11 +16,11 @@ env:
   - name: PARAGRAPH_API_KEY
     description: Paragraph API authentication key
     required: true
-  - name: PARAGRAPH_PUBLICATION_ID
-    description: Default publication ID (optional, auto-discovered if not set)
-    required: false
   - name: PARAGRAPH_PUBLICATION_SLUG
-    description: Publication slug for URL building (optional, auto-discovered if not set). Example: "myblog" or "jonathancolton.eth"
+    description: Publication slug for URL building (required). Example: "myblog" or "jonathancolton.eth"
+    required: true
+  - name: PARAGRAPH_PUBLICATION_ID
+    description: Default publication ID (optional, not needed if slug is set)
     required: false
   - name: PARAGRAPH_API_BASE_URL
     description: Custom API base URL (for testing)
@@ -76,10 +76,12 @@ documentation: README.md
 setup:
   - name: Get API key
     description: Go to Paragraph account settings → Integrations → Generate API key
-  - name: Set environment variable
-    description: Add PARAGRAPH_API_KEY to OpenClaw environment
-  - name: (Optional) Set default publication
-    description: Set PARAGRAPH_PUBLICATION_ID to skip passing it every call
+  - name: Get publication slug
+    description: Find your publication slug in your Paragraph dashboard (e.g., "myblog" or "jonathancolton.eth")
+  - name: Set environment variables
+    description: Add PARAGRAPH_API_KEY and PARAGRAPH_PUBLICATION_SLUG to OpenClaw environment
+  - name: (Optional) Set default publication ID
+    description: Set PARAGRAPH_PUBLICATION_ID if you prefer using ID over slug (slug is recommended)
 
 # Example usage
 examples:

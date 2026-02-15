@@ -49,14 +49,14 @@ Set these environment variables (in OpenClaw config or shell):
 ```bash
 # Required
 export PARAGRAPH_API_KEY="your_api_key_here"
+export PARAGRAPH_PUBLICATION_SLUG="your_publication_slug"  # e.g., "myblog" or "jonathancolton.eth"
 
 # Optional
-export PARAGRAPH_PUBLICATION_ID="your_publication_id"  # auto-discovered if not set
-export PARAGRAPH_PUBLICATION_SLUG="your_publication_slug"  # auto-discovered if not set (e.g., "myblog" or "jonathancolton.eth")
+export PARAGRAPH_PUBLICATION_ID="your_publication_id"  # not needed if slug is set
 export PARAGRAPH_API_BASE_URL="https://public.api.paragraph.com/api"  # internal, don't change
 ```
 
-**Note**: Both `PARAGRAPH_PUBLICATION_ID` and `PARAGRAPH_PUBLICATION_SLUG` are optional. If not provided, the skill will automatically discover them by fetching the public feed (requires at least one published post). If your publication has no posts yet, you'll need to set one of these manually. The slug is used for constructing post URLs.
+**Note**: `PARAGRAPH_PUBLICATION_SLUG` is now required for proper URL construction. The skill will not auto-discover the slug. If you don't know your publication slug, you can find it in your Paragraph dashboard or by calling `paragraph_getMyPublication` after setting only the API key.
 
 ## API Reference
 

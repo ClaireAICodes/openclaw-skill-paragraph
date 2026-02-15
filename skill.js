@@ -101,23 +101,43 @@ async function request(method, endpoint, body = null, params = {}, options = {})
  * Auto-discover publication ID and slug from the API key by fetching the feed
  * Caches the results in DEFAULT_PUBLICATION_ID and DEFAULT_PUBLICATION_SLUG
  * Returns the publication ID
+ *
+ * Respects pre-configured PARAGRAPH_PUBLICATION_SLUG: if set, uses it to fetch
+ * the publication directly instead of auto-discovering from the feed.
  */
 async function discoverPublicationId() {
   if (DEFAULT_PUBLICATION_ID) {
     return DEFAULT_PUBLICATION_ID
   }
 
+  // If a slug is configured, use it to fetch the publication and get the ID
+  if (DEFAULT_PUBLICATION_SLUG) {
+    try {
+      const pub = await request("GET", `/v1/publications/slug/${encodeURIComponent(DEFAULT_PUBLICATION_SLUG)}`)
+      if (pub && pub.id) {
+        DEFAULT_PUBLICATION_ID = String(pub.id)
+        // Slug already set from env var, keep it
+        return DEFAULT_PUBLICATION_ID
+      }
+    } catch (e) {
+      // If this fails, fall back to feed auto-discovery
+      console.warn(`Failed to fetch publication using configured slug "${DEFAULT_PUBLICATION_SLUG}", falling back to feed auto-discovery`)
+    }
+  }
+
+  // Fallback: auto-discover from feed
   try {
-    // Fetch a small feed to get a post with publication info
     const result = await request("GET", "/v1/posts/feed", null, { limit: 1 })
     if (result.items && result.items.length > 0) {
       const pub = result.items[0].publication
       if (pub) {
-        // Prefer slug from the feed - it's the stable identifier
-        if (pub.slug) {
-          DEFAULT_PUBLICATION_SLUG = pub.slug
-        } else if (pub.customDomain) {
-          DEFAULT_PUBLICATION_SLUG = pub.customDomain
+        // Only set slug if not already configured
+        if (!DEFAULT_PUBLICATION_SLUG) {
+          if (pub.slug) {
+            DEFAULT_PUBLICATION_SLUG = pub.slug
+          } else if (pub.customDomain) {
+            DEFAULT_PUBLICATION_SLUG = pub.customDomain
+          }
         }
 
         // Now fetch the full publication using the slug to get the canonical ID
@@ -125,7 +145,7 @@ async function discoverPublicationId() {
           const fullPub = await request("GET", `/v1/publications/slug/${encodeURIComponent(DEFAULT_PUBLICATION_SLUG)}`)
           if (fullPub && fullPub.id) {
             DEFAULT_PUBLICATION_ID = String(fullPub.id)
-            // Ensure slug is cached
+            // Ensure slug is cached only if not already set
             if (!DEFAULT_PUBLICATION_SLUG && fullPub.slug) {
               DEFAULT_PUBLICATION_SLUG = fullPub.slug
             }
@@ -138,7 +158,7 @@ async function discoverPublicationId() {
     // Silently fall through to error later
   }
 
-  throw new Error("Could not auto-discover publication ID. Either set PARAGRAPH_PUBLICATION_ID env var, or ensure your publication has at least one post to read from the feed.")
+  throw new Error("Could not auto-discover publication ID. Either set PARAGRAPH_PUBLICATION_ID or PARAGRAPH_PUBLICATION_SLUG env var, or ensure your publication has at least one post to read from the feed.")
 }
 
 /**
@@ -352,16 +372,22 @@ export const tools = {
 
   /**
    * Get the current publication associated with the API key
-   * This auto-discovers the publication (via feed -> slug -> ID) and returns full details
+   * This auto-discovers the publication (via feed -> slug -> ID) and returns full details.
+   * Does not override a pre-configured PARAGRAPH_PUBLICATION_SLUG.
    */
   paragraph_getMyPublication: wrapTool(async () => {
-    // This will populate DEFAULT_PUBLICATION_ID and DEFAULT_PUBLICATION_SLUG
+    // This will populate DEFAULT_PUBLICATION_ID (and may set slug if not configured)
     const id = await discoverPublicationId()
     // Now fetch full publication details by the canonical ID
     const result = await request("GET", `/v1/publications/${id}`)
-    // Also ensure slug is cached for URL building
-    if (result.slug) DEFAULT_PUBLICATION_SLUG = result.slug
-    if (result.customDomain) DEFAULT_PUBLICATION_SLUG = result.customDomain
+    // Cache slug for URL building ONLY if not already configured (respects env var)
+    if (!DEFAULT_PUBLICATION_SLUG) {
+      if (result.slug) {
+        DEFAULT_PUBLICATION_SLUG = result.slug
+      } else if (result.customDomain) {
+        DEFAULT_PUBLICATION_SLUG = result.customDomain
+      }
+    }
     return result
   }),
 

@@ -1,7 +1,7 @@
 ---
 name: paragraph
 description: OpenClaw skill for Paragraph.com - Web3-native blogging platform with tokenization
-version: 1.0.0
+version: 1.2.0
 author: Phil (OpenClaw)
 license: ISC
 

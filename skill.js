@@ -7,8 +7,7 @@
 
 // Configuration
 const API_BASE = process.env.PARAGRAPH_API_BASE_URL || "https://public.api.paragraph.com/api"
-const API_KEY = process.env.PARAGRAPH_API_KEY
-// DEFAULT_PUBLICATION_ID can be set manually, but will auto-discover from API if not provided
+// NOTE: API_KEY is read lazily inside request() to respect per-agent env injection
 let DEFAULT_PUBLICATION_ID = process.env.PARAGRAPH_PUBLICATION_ID || null
 // Publication slug (for URL building) - can be set manually via env var or auto-discovered
 let DEFAULT_PUBLICATION_SLUG = process.env.PARAGRAPH_PUBLICATION_SLUG || null
@@ -32,7 +31,9 @@ let DEFAULT_PUBLICATION_SLUG = process.env.PARAGRAPH_PUBLICATION_SLUG || null
  * @returns {Promise<any>}
  */
 async function request(method, endpoint, body = null, params = {}, options = {}) {
-  if (!API_KEY) {
+  // Read API_KEY from env at call time to respect per-skill injection
+  const apiKey = process.env.PARAGRAPH_API_KEY
+  if (!apiKey) {
     throw new Error("PARAGRAPH_API_KEY environment variable not set")
   }
 
@@ -44,7 +45,7 @@ async function request(method, endpoint, body = null, params = {}, options = {})
   })
 
   const headers = {
-    "Authorization": `Bearer ${API_KEY}`
+    "Authorization": `Bearer ${apiKey}`
   }
 
   let fetchBody = null
@@ -106,6 +107,11 @@ async function request(method, endpoint, body = null, params = {}, options = {})
  * the publication directly instead of auto-discovering from the feed.
  */
 async function discoverPublicationId() {
+  // Lazy-load from env if not already set (respects per-agent env injection)
+  if (!DEFAULT_PUBLICATION_SLUG && process.env.PARAGRAPH_PUBLICATION_SLUG) {
+    DEFAULT_PUBLICATION_SLUG = process.env.PARAGRAPH_PUBLICATION_SLUG
+  }
+
   if (DEFAULT_PUBLICATION_ID) {
     return DEFAULT_PUBLICATION_ID
   }
@@ -447,8 +453,8 @@ export const tools = {
     const response = await fetch(url.toString(), {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${API_KEY}`
-        // Content-Type (with boundary) set automatically by fetch when using FormData
+        "Authorization": `Bearer ${process.env.PARAGRAPH_API_KEY}`
+        // Content-type (with boundary) set automatically by fetch when using FormData
       },
       body: formData
     })

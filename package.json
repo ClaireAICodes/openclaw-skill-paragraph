@@ -28,5 +28,9 @@
   "license": "ISC",
   "engines": {
     "node": ">=19"
+  },
+  "openclaw": {
+    "skill": true,
+    "requiresEnv": ["PARAGRAPH_API_KEY", "PARAGRAPH_PUBLICATION_SLUG"]
   }
 }
